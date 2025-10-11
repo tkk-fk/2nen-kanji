@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<title>二年生の漢字 フラッシュカード</title>
+
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDMincho:wght@400;700&family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#f7fafc; --ink:#1f2937; --muted:#6b7280; --card:#ffffff;
+    --accent:#2563eb; --accent-ink:#ffffff;
+    --chip:#e5e7eb; --chip-on:#dbeafe; --chip-ring:#93c5fd;
+    --radius:22px; --shadow:0 10px 30px rgba(0,0,0,.08);
+    --ui-font-stack: "BIZ UDPGothic","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    --kyokasho-stack:
+      "UD Digi Kyokasho N-R","UD Digi Kyokasho N-B","UD デジタル 教科書体 N-R","UD デジタル 教科書体 N-B",
+      "Yu Kyokasho","YuKyokasho","YuKyokasho Yoko","Hiragino KyoKashotai W3","Hiragino KyoKashotai W6",
+      "BIZ UDMincho","Noto Serif JP","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family: var(--ui-font-stack);
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  .app{width:min(980px,96vw)}
+  .panel{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:18px; display:flex; flex-direction:column; gap:14px;
+  }
+  .top{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .btn{
+    appearance:none; border:none; border-radius:14px; padding:12px 18px; font-size:16px; line-height:1; cursor:pointer;
+    background:var(--chip); color:var(--ink);
+    transition:background .15s ease, color .15s ease, transform .04s ease;
+    font-family: var(--ui-font-stack);
+  }
+  .btn:active{ transform:translateY(1px) }
+  .btn.primary{ background:var(--accent); color:var(--accent-ink); }
+  .btn.switch.active{ background:var(--accent); color:var(--accent-ink); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed }
+  .sep{ flex:1 }
+
+  .sheet{ position:fixed; inset:0; background:rgba(0,0,0,.28); display:none; align-items:flex-end; justify-content:center; }
+  .sheet.show{ display:flex }
+  .sheet-inner{
+    width:min(980px,100%); max-height:80vh; overflow:auto;
+    background:var(--card); border-radius:20px 20px 0 0; box-shadow:var(--shadow);
+    padding:16px 16px 18px; display:flex; flex-direction:column; gap:12px;
+  }
+  .sheet-head{ display:flex; align-items:center; }
+  .sheet-title{ font-weight:700; }
+  .sheet-close{ margin-left:auto; background:transparent; border:none; font-size:16px; color:var(--muted); cursor:pointer; }
+  .grid{ display:grid; gap:8px; grid-template-columns: repeat(10, 1fr); }
+  @media (max-width:640px){ .grid{ grid-template-columns: repeat(8, 1fr); } }
+  .chip{
+    background:var(--chip); border:none; border-radius:12px; padding:10px 0; cursor:pointer; font-size:18px;
+    font-family: var(--kyokasho-stack);
+  }
+  .chip.on{ background:var(--chip-on); outline:3px solid var(--chip-ring); }
+  .sheet-foot{ display:flex; gap:10px; margin-top:6px; }
+  .ghost{ background:transparent; border:1px solid #cbd5e1 }
+
+  .card-wrap{ display:none; flex-direction:column; gap:10px; }
+  .backlink{ background:transparent; border:none; color:var(--muted); align-self:flex-start; cursor:pointer; padding:6px 6px; }
+  .card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding: clamp(14px, 6vw, 28px);
+    display:flex; align-items:center; justify-content:center; gap: clamp(18px, 6vw, 48px);
+    min-height: 48vh;
+    user-select:none;
+  }
+  .kanji{
+    font-family: var(--kyokasho-stack);
+    font-size: clamp(80px, 22vw, 220px);
+    line-height:1; letter-spacing: .02em;
+    font-feature-settings: "palt" 1;
+  }
+  .answer{
+    min-width: 32%;
+    font-size: clamp(22px, 7vw, 42px);
+    color: var(--muted);
+    visibility: hidden;
+    font-family: var(--ui-font-stack);
+  }
+  .answer.show{ visibility: visible; color: var(--ink); }
+  .controls{ display:flex; align-items:center; gap:8px; }
+
+  .finish{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.12); z-index:50;
+  }
+  .finish.show{ display:flex; animation: fade 1200ms ease; }
+  .finish .box{
+    background: var(--card); padding: 18px 22px; border-radius: 16px; box-shadow: var(--shadow);
+    font-weight:700; font-size: 20px;
+    font-family: var(--ui-font-stack);
+  }
+  @keyframes fade{ 0%{opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{opacity:0} }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel" id="setup">
+      <div class="top" aria-hidden="true" style="justify-content:center; font-weight:700;">二年生の漢字 フラッシュカード</div>
+      <div class="controls" style="justify-content:center;">
+        <button class="btn switch" id="allBtn">ぜんぶ</button>
+        <button class="btn switch" id="pickBtn">えらぶ</button>
+        <span class="sep"></span>
+        <button class="btn primary" id="startBtn">スタート</button>
+      </div>
+    </div>
+
+    <div class="card-wrap" id="play">
+      <button class="backlink" id="backBtn">← もどる</button>
+      <div class="card" id="card" role="button" aria-label="カードをタップ">
+        <div class="kanji" id="q"></div>
+        <div class="answer" id="a"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet" aria-modal="true" role="dialog">
+    <div class="sheet-inner">
+      <div class="sheet-head">
+        <div class="sheet-title">漢字をえらぶ</div>
+        <button class="sheet-close" id="closeSheet">とじる ✕</button>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="sheet-foot">
+        <button class="btn ghost" id="clearBtn">全解除</button>
+        <span class="sep"></span>
+        <button class="btn primary" id="okBtn">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="finish" id="finish">
+    <div class="box">がんばったね😊</div>
+  </div>
+
+<script>
+const KANJI_LIST = [
+  "引","羽","雲","園","遠","何","科","夏","家","歌","画","回","会","海","絵","外","角","楽","活","間",
+  "丸","岩","顔","汽","記","帰","弓","牛","魚","京","強","教","近","兄","形","計","元","原","言","古",
+  "午","後","語","工","公","広","交","光","考","行","高","黄","合","谷","国","黒","今","才","細","作",
+  "算","止","市","矢","姉","思","紙","寺","自","時","室","社","弱","首","秋","週","春","書","少","場",
+  "色","食","新","親","図","数","西","声","星","晴","切","雪","船","線","組","早","走","草","多","体",
+  "太","台","地","池","知","茶","昼","長","鳥","朝","直","通","弟","店","点","電","刀","冬","当","東",
+  "答","頭","同","道","読","内","肉","馬","売","買","麦","半","番","父","風","分","聞","米","歩","母",
+  "方","北","毎","妹","万","明","鳴","毛","門","夜","野","友","用","曜","来","里","理","話"
+];
+
+const READINGS = {
+  "引":"ひく・いん","羽":"はね・う","雲":"くも","園":"その・えん","遠":"とおい・えん",
+  "何":"なに・なん","科":"か","夏":"なつ","家":"いえ・か","歌":"うた・か",
+  "画":"が","回":"まわる・かい","会":"あう・かい","海":"うみ","絵":"え","外":"そと・がい",
+  "角":"かど・つの・かく","楽":"たのしい・がく・らく","活":"かつ","間":"あいだ・かん",
+  "丸":"まる・がん","岩":"いわ","顔":"かお","汽":"き","記":"しるす・き","帰":"かえる・き",
+  "弓":"ゆみ","牛":"うし","魚":"さかな・ぎょ","京":"きょう・けい","強":"つよい・きょう",
+  "教":"おしえる・きょう","近":"ちかい・きん","兄":"あに・けい・きょう","形":"かたち・けい",
+  "計":"はかる・けい","元":"もと・げん・がん","原":"はら・げん","言":"いう・げん・ごん","古":"ふるい・こ",
+  "午":"うま・ご","後":"あと・のち・ご・こう","語":"かたる・ご","工":"こう","公":"おおやけ・こう",
+  "広":"ひろい・こう","交":"まじわる・こう","光":"ひかり・こう","考":"かんがえる・こう",
+  "行":"いく・こう・ぎょう","高":"たかい・こう","黄":"き・おう","合":"あう・ごう","谷":"たに・こく",
+  "国":"くに・こく","黒":"くろ・こく","今":"いま・こん","才":"さい","細":"ほそい・こまかい・さい",
+  "作":"つくる・さく","算":"さん","止":"とまる・とめる・し","市":"し","矢":"や",
+  "姉":"あね・し","思":"おもう・し","紙":"かみ・し","寺":"てら・じ","自":"みずから・じ",
+  "時":"とき・じ","室":"しつ","社":"しゃ","弱":"よわい・じゃく","首":"くび・しゅ",
+  "秋":"あき・しゅう","週":"しゅう","春":"はる・しゅん","書":"かく・しょ","少":"すくない・しょう",
+  "場":"ば・じょう","色":"いろ・しょく","食":"たべる・しょく","新":"あたらしい・しん",
+  "親":"おや・したしい・しん","図":"ず・と","数":"かず・すう","西":"にし・せい・さい",
+  "声":"こえ・せい","星":"ほし・せい","晴":"はれる・せい","切":"きる・せつ","雪":"ゆき・せつ",
+  "船":"ふね・せん","線":"せん","組":"くむ・そ","早":"はやい・そう","走":"はしる・そう",
+  "草":"くさ・そう","多":"おおい・た","体":"からだ・たい","太":"ふとい","台":"だい・たい",
+  "地":"ち","池":"いけ・ち","知":"しる・ち","茶":"ちゃ","昼":"ひる・ちゅう","長":"ながい・ちょう",
+  "鳥":"とり・ちょう","朝":"あさ・ちょう","直":"なおす・ちょく","通":"とおる・つう",
+  "弟":"おとうと・てい・だい","店":"みせ・てん","点":"てん","電":"でん","刀":"かたな・とう",
+  "冬":"ふゆ・とう","当":"あたる・とう","東":"ひがし・とう","答":"こたえる・とう",
+  "頭":"あたま・とう・ず","同":"おなじ・どう","道":"みち・どう","読":"よむ・どく",
+  "内":"うち・ない","肉":"にく","馬":"うま・ば","売":"うる・ばい","買":"かう・ばい","麦":"むぎ・ばく",
+  "半":"はん","番":"ばん","父":"ちち・ふ","風":"かぜ・ふう","分":"わける・ぶん・ふん",
+  "聞":"きく・ぶん","米":"こめ・べい","歩":"あるく・ほ","母":"はは・ぼ","方":"かた・ほう",
+  "北":"きた・ほく","毎":"まい","妹":"いもうと・まい","万":"まん","明":"あかるい・めい・みょう",
+  "鳴":"なく・めい","毛":"け・もう","門":"もん","夜":"よる・や","野":"の・や","友":"とも・ゆう",
+  "用":"よう","曜":"よう","来":"くる・らい","里":"さと・り","理":"り","話":"はなす・わ"
+};
+
+let picked = []; let order = []; let idx = 0; let showAns = false; let mode = null;
+
+const setup = document.getElementById('setup');
+const play = document.getElementById('play');
+const qEl = document.getElementById('q');
+const aEl = document.getElementById('a');
+const card = document.getElementById('card');
+
+const allBtn = document.getElementById('allBtn');
+const pickBtn = document.getElementById('pickBtn');
+const startBtn = document.getElementById('startBtn');
+const backBtn = document.getElementById('backBtn');
+
+const sheet = document.getElementById('sheet');
+const grid = document.getElementById('grid');
+const okBtn = document.getElementById('okBtn');
+const clearBtn = document.getElementById('clearBtn');
+const closeSheet = document.getElementById('closeSheet');
+
+const finish = document.getElementById('finish');
+
+updateStartEnable(); setActiveButtons();
+
+allBtn.addEventListener('click', ()=>{
+  picked = [...KANJI_LIST];
+  mode = 'all'; setActiveButtons(); flashPickToast(); updateStartEnable();
+});
+
+pickBtn.addEventListener('click', ()=>{
+  mode = 'pick'; setActiveButtons(); openPicker();
+});
+
+startBtn.addEventListener('click', ()=>{
+  if(picked.length===0){ picked = [...KANJI_LIST]; mode='all'; setActiveButtons(); }
+  begin();
+});
+
+backBtn.addEventListener('click', ()=>{ endAndReturn(); });
+
+card.addEventListener('click', ()=>{
+  if(!showAns){ showAns = true; aEl.classList.add('show'); }
+  else{
+    if(idx + 1 >= order.length){ finishRound(); }
+    else{ idx++; showQuestion(); }
+  }
+});
+
+function openPicker(){
+  if(!grid.dataset.ready){
+    const frag = document.createDocumentFragment();
+    KANJI_LIST.forEach(k=>{
+      const b = document.createElement('button');
+      b.className = 'chip'; b.textContent = k; b.type='button';
+      b.addEventListener('click', ()=> b.classList.toggle('on'));
+      frag.appendChild(b);
+    });
+    grid.appendChild(frag); grid.dataset.ready = '1';
+  }
+  Array.from(grid.children).forEach(chip=> chip.classList.remove('on'));
+  sheet.classList.add('show'); document.body.style.overflow='hidden';
+}
+closeSheet.addEventListener('click', closePicker);
+okBtn.addEventListener('click', ()=>{
+  picked = Array.from(grid.children).filter(el=>el.classList.contains('on')).map(el=>el.textContent);
+  updateStartEnable(); closePicker();
+});
+clearBtn.addEventListener('click', ()=>{ Array.from(grid.children).forEach(el=>el.classList.remove('on')); });
+function closePicker(){ sheet.classList.remove('show'); document.body.style.overflow=''; }
+
+function begin(){
+  order = picked.map(k => KANJI_LIST.indexOf(k)).filter(i=>i>=0);
+  idx = 0; setup.style.display = 'none'; play.style.display = 'flex'; showQuestion();
+}
+function showQuestion(){
+  const k = KANJI_LIST[order[idx]];
+  qEl.textContent = k;
+  aEl.textContent = READINGS[k] || "（よみ未設定）";
+  showAns = false; aEl.classList.remove('show');
+}
+
+function finishRound(){
+  finish.classList.add('show');
+  setTimeout(()=>{ finish.classList.remove('show'); endAndReturn(); }, 1200);
+}
+function endAndReturn(){
+  play.style.display = 'none'; setup.style.display = '';
+  idx = 0; showAns = false; aEl.classList.remove('show'); mode = null; setActiveButtons();
+}
+
+function setActiveButtons(){
+  allBtn.classList.toggle('active', mode==='all');
+  pickBtn.classList.toggle('active', mode==='pick');
+}
+
+function flashPickToast(){
+  allBtn.animate([{transform:'scale(1)'},{transform:'scale(1.05)'},{transform:'scale(1)'}],{duration:220});
+}
+function updateStartEnable(){ startBtn.disabled = false; }
+</script>
+</body>
+</html>
